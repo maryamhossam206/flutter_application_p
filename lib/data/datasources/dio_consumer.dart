@@ -41,14 +41,15 @@ class DioConsumer implements ApiConsumer {
   Future<dynamic> get(
     String path, {
     Object? data, 
-    Map<String, dynamic>* queryParameters,
+    Map<String, dynamic>? queryParameters,
     Options? options,
     String? token,
   }) async {
     try {
       final response = await dio.get(
         path,
-        // 🟢 تم إزالة الـ data تماماً لكي يكون طلب الـ GET نظيفاً ولا يرسل أي Body للسيرفر
+        // 🟢 إجبار إرسال Body فارغ بصيغة JSON حتى مع طلب الـ GET لإرضاء السيرفر المعلق
+        data: data ?? {}, 
         queryParameters: queryParameters,
         options: _setOptions(options, token),
       );
