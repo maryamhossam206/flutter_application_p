@@ -35,13 +35,14 @@ class _LoginScreenState extends State<LoginScreen> {
     final dio = Dio();
     const String baseUrl = 'https://accessories-eshop.runasp.net';
     final userEmail = _emailController.text.trim();
+    final userPassword = _passwordController.text;
 
     try {
       final response = await dio.post(
         '$baseUrl/api/Auth/register',
         data: {
           'email': userEmail,
-          'password': _passwordController.text,
+          'password': userPassword,
           'firstName': 'User',
           'lastName': 'Test',
         },
@@ -53,8 +54,11 @@ class _LoginScreenState extends State<LoginScreen> {
         });
 
         if (response.statusCode == 200 || response.statusCode == 201) {
-          // تمرير الإيميل لشاشة الـ OTP عبر extra
-          context.go('/otp', extra: userEmail);
+          
+          context.go('/otp', extra: {
+            'email': userEmail,
+            'password': userPassword,
+          });
         }
       }
     } on DioException catch (e) {

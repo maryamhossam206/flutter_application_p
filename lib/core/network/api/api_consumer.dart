@@ -6,7 +6,7 @@ abstract class ApiConsumer {
     Object? data,
     Map<String, dynamic>? queryParameters,
     Options? options,
-    String? token, // 🟢 تم إضافة الـ token والـ options
+    String? token, 
   });
 
   Future<dynamic> post(
@@ -15,7 +15,7 @@ abstract class ApiConsumer {
     Map<String, dynamic>? queryParameters,
     bool isFormData = false,
     Options? options,
-    String? token, // 🟢 تم إضافة الـ token والـ options
+    String? token, 
   });
 
   Future<dynamic> put(
@@ -24,7 +24,7 @@ abstract class ApiConsumer {
     Map<String, dynamic>? queryParameters,
     bool isFormData = false,
     Options? options,
-    String? token, // 🟢 تم إضافة الـ token والـ options
+    String? token, 
   });
 
   Future<dynamic> patch(
@@ -33,7 +33,7 @@ abstract class ApiConsumer {
     Map<String, dynamic>? queryParameters,
     bool isFormData = false,
     Options? options,
-    String? token, // 🟢 تم إضافة الـ token والـ options
+    String? token, 
   });
 
   Future<dynamic> delete(
@@ -41,6 +41,6 @@ abstract class ApiConsumer {
     Object? data,
     Map<String, dynamic>? queryParameters,
     Options? options,
-    String? token, // 🟢 تم إضافة الـ token والـ options
+    String? token, 
   });
 }

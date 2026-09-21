@@ -8,7 +8,8 @@ class DioConsumer implements ApiConsumer {
 
   DioConsumer({required this.dio}) {
     dio.options.baseUrl = Endpoints.baseUrl;
-    dio.options.responseType = ResponseType.json;
+    // 🟢 1. تجنب إجبار الـ Response إنه يكون JSON فقط عشان يتقبل النص الصريح (Plain Text)
+    dio.options.responseType = ResponseType.plain; 
     dio.options.headers = {
       'Content-Type': 'application/json',
       'Accept': 'application/json',
@@ -26,6 +27,23 @@ class DioConsumer implements ApiConsumer {
     );
   }
 
+  // 🟢 2. دالة مساعدة لتحويل الـ Plain Text إلى Map/JSON تلقائياً لو كان ينفع يتفك
+  dynamic _parseResponse(Response response) {
+    if (response.data is String) {
+      try {
+        // لو النص ينفع يتقرأ كـ JSON هيتحول لـ Map/List
+        return dio.transformer.transformResponse(
+          RequestOptions(path: response.requestOptions.path),
+          ResponseBody.fromString(response.data, response.statusCode!),
+        );
+      } catch (_) {
+        // لو نص عادي زي "Email verified Successfully" هيرجعه زي ما هو كـ String
+        return response.data;
+      }
+    }
+    return response.data;
+  }
+
   Options _setOptions(Options? options, String? token) {
     final newOptions = options ?? Options();
     newOptions.headers = Map<String, dynamic>.from(dio.options.headers)
@@ -37,7 +55,7 @@ class DioConsumer implements ApiConsumer {
     return newOptions;
   }
 
-@override
+  @override
   Future<dynamic> get(
     String path, {
     Object? data, 
@@ -48,16 +66,16 @@ class DioConsumer implements ApiConsumer {
     try {
       final response = await dio.get(
         path,
-        // 🟢 إجبار إرسال Body فارغ بصيغة JSON حتى مع طلب الـ GET لإرضاء السيرفر المعلق
-        data: data ?? {}, 
+        data: data, // 🟢 شلنا إجبار الـ {} الفارغة لمنع استياء السيرفرات
         queryParameters: queryParameters,
         options: _setOptions(options, token),
       );
-      return response.data;
+      return _parseResponse(response);
     } on DioException catch (e) {
       handleDioException(e);
     }
   }
+
   @override
   Future<dynamic> post(
     String path, {
@@ -76,7 +94,7 @@ class DioConsumer implements ApiConsumer {
         queryParameters: queryParameters,
         options: _setOptions(options, token),
       );
-      return response.data;
+      return _parseResponse(response);
     } on DioException catch (e) {
       handleDioException(e);
     }
@@ -100,7 +118,7 @@ class DioConsumer implements ApiConsumer {
         queryParameters: queryParameters,
         options: _setOptions(options, token),
       );
-      return response.data;
+      return _parseResponse(response);
     } on DioException catch (e) {
       handleDioException(e);
     }
@@ -124,7 +142,7 @@ class DioConsumer implements ApiConsumer {
         queryParameters: queryParameters,
         options: _setOptions(options, token),
       );
-      return response.data;
+      return _parseResponse(response);
     } on DioException catch (e) {
       handleDioException(e);
     }
@@ -145,7 +163,7 @@ class DioConsumer implements ApiConsumer {
         queryParameters: queryParameters,
         options: _setOptions(options, token),
       );
-      return response.data;
+      return _parseResponse(response);
     } on DioException catch (e) {
       handleDioException(e);
     }
