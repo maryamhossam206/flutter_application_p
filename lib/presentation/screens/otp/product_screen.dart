@@ -1,10 +1,11 @@
 import 'dart:convert';
 import 'dart:ui';
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart'; // 👈 لتفعيل الانتقال بالـ GoRouter
+import 'package:go_router/go_router.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter_application_p/core/network/api/endpoints.dart';
 import 'product_details_screen.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class ProductScreen extends StatefulWidget {
   final String? token;
@@ -110,12 +111,6 @@ class _ProductScreenState extends State<ProductScreen> {
             _categories = fetchedList;
           });
         }
-      } else {
-        if (mounted) {
-          setState(() {
-            _categories = [];
-          });
-        }
       }
     } catch (e) {
       if (mounted) {
@@ -126,16 +121,125 @@ class _ProductScreenState extends State<ProductScreen> {
     }
   }
 
-  String? _getFormattedImageUrl(dynamic imagePath) {
-    if (imagePath == null || imagePath.toString().isEmpty) return null;
-    String path = imagePath.toString();
-    if (path.startsWith('http://') || path.startsWith('https://')) {
-      return path;
+
+  String? _getFormattedImageUrl(dynamic product) {
+  if (product == null) return null;
+
+  
+  dynamic rawImageUrl = product['coverPictureUrl'] ??
+      product['imageUrl'] ??
+      product['image'] ??
+      product['coverUrl'] ??
+      product['pictureUrl'] ??
+      product['picture'];
+
+  // إذا كانت الصور داخل قائمة
+  if (rawImageUrl == null) {
+    final list = product['productPictures'] ?? product['images'];
+    if (list is List && list.isNotEmpty) {
+      final firstImg = list[0];
+      if (firstImg is Map) {
+        rawImageUrl = firstImg['url'] ?? firstImg['imageUrl'] ?? firstImg['path'];
+      } else if (firstImg != null) {
+        rawImageUrl = firstImg.toString();
+      }
     }
-    if (!path.startsWith('/')) {
-      path = '/$path';
+  }
+
+  if (rawImageUrl == null || rawImageUrl.toString().trim().isEmpty) return null;
+
+  String path = rawImageUrl.toString().trim();
+
+  if (path.startsWith('http://') || path.startsWith('https://')) {
+    return path;
+  }
+
+  if (!path.startsWith('/')) {
+    path = '/$path';
+  }
+  return '${Endpoints.baseUrl}$path';
+}
+  
+
+  Future<void> _addToCart(dynamic product) async {
+    final productId = product['id'] ?? product['productId'] ?? product['_id'];
+    
+    if (productId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('خطأ: لم يتم العثور على معرف المنتج')),
+      );
+      return;
     }
-    return '${Endpoints.baseUrl}$path';
+
+    try {
+      final headers = <String, String>{
+        'Accept': 'application/json',
+        'Content-Type': 'application/json',
+      };
+
+      if (widget.token != null && widget.token!.isNotEmpty) {
+        headers['Authorization'] = 'Bearer ${widget.token}';
+      }
+
+      final bodyData = json.encode({
+        'productId': productId,
+        'quantity': 1,
+      });
+
+      final baseUrl = Endpoints.baseUrl.endsWith('/') 
+          ? Endpoints.baseUrl.substring(0, Endpoints.baseUrl.length - 1) 
+          : Endpoints.baseUrl;
+
+      
+      List<Uri> possibleUrls = [
+        Uri.parse('$baseUrl/api/Cart/items'),
+        Uri.parse('$baseUrl/api/Cart/add'),
+        Uri.parse('$baseUrl/api/Cart/item'),
+        Uri.parse('$baseUrl/api/Cart/$productId'),
+        Uri.parse('$baseUrl/api/Cart/add/$productId'),
+        Uri.parse('$baseUrl/api/Cart'),
+      ];
+
+      http.Response? response;
+
+      for (var url in possibleUrls) {
+        response = await http.post(url, headers: headers, body: bodyData);
+        // إذا نجح الطلب (ليس 405 ولا 404) نكتفي بهذا المسار
+        if (response.statusCode != 405 && response.statusCode != 404) {
+          break;
+        }
+      }
+
+      if (mounted) {
+        if (response != null && (response.statusCode == 200 || response.statusCode == 201 || response.statusCode == 204)) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('تمت إضافة ${product['name'] ?? 'المنتج'} إلى السلة بنجاح!'),
+              backgroundColor: Colors.green,
+              duration: const Duration(seconds: 2),
+            ),
+          );
+        } else {
+          final statusCode = response?.statusCode ?? 'No Response';
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('فشل الإضافة للسلة: خطأ ($statusCode)'),
+              backgroundColor: Colors.redAccent,
+              duration: const Duration(seconds: 3),
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('حدث خطأ أثناء الإضافة: $e'),
+            backgroundColor: Colors.redAccent,
+          ),
+        );
+      }
+    }
   }
 
   @override
@@ -147,7 +251,14 @@ class _ProductScreenState extends State<ProductScreen> {
         centerTitle: true,
         elevation: 0,
         actions: [
-          // 🟢 1. زرار الـ Settings ثابت في الـ AppBar
+        
+          IconButton(
+            icon: const Icon(Icons.shopping_cart_outlined),
+            tooltip: 'Cart',
+            onPressed: () {
+              context.push('/cart', extra: widget.token);
+            },
+          ),
           IconButton(
             icon: const Icon(Icons.settings),
             tooltip: 'Settings',
@@ -157,12 +268,11 @@ class _ProductScreenState extends State<ProductScreen> {
           ),
         ],
       ),
-      // 🟢 2. زرار ثابت على الشاشة (Floating) مهما حصل Scroll يظل ثابتاً في الأسفل
       floatingActionButton: FloatingActionButton(
         backgroundColor: Theme.of(context).primaryColor,
-        child: const Icon(Icons.settings, color: Colors.white),
+        child: const Icon(Icons.shopping_cart, color: Colors.white),
         onPressed: () {
-          context.push('/settings');
+          context.push('/cart', extra: widget.token);
         },
       ),
       body: _buildBody(),
@@ -227,12 +337,7 @@ class _ProductScreenState extends State<ProductScreen> {
                       final dynamic price =
                           product['price'] ?? product['unitPrice'] ?? 0;
 
-                      final String? rawImageUrl = product['imageUrl'] ??
-                          product['image'] ??
-                          product['coverUrl'] ??
-                          product['pictureUrl'];
-                      final String? imageUrl = _getFormattedImageUrl(rawImageUrl);
-
+                      final String? imageUrl = _getFormattedImageUrl(product);
                       final String? description = product['description'];
 
                       return InkWell(
@@ -267,7 +372,7 @@ class _ProductScreenState extends State<ProductScreen> {
                                             fit: BoxFit.cover,
                                             errorBuilder:
                                                 (context, error, stackTrace) =>
-                                                    const Icon(Icons.watch,
+                                                    const Icon(Icons.broken_image,
                                                         size: 50,
                                                         color: Colors.grey),
                                           )
@@ -319,17 +424,7 @@ class _ProductScreenState extends State<ProductScreen> {
                                           ),
                                         ),
                                         InkWell(
-                                          onTap: () {
-                                            ScaffoldMessenger.of(context)
-                                                .showSnackBar(
-                                              SnackBar(
-                                                content: Text(
-                                                    'تمت إضافة $name إلى السلة!'),
-                                                duration:
-                                                    const Duration(seconds: 1),
-                                              ),
-                                            );
-                                          },
+                                          onTap: () => _addToCart(product),
                                           child: CircleAvatar(
                                             radius: 14,
                                             backgroundColor:

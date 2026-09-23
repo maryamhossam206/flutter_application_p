@@ -4,6 +4,7 @@ import '../../presentation/screens/login/login_screen.dart';
 import '../../presentation/screens/otp/otp_screen.dart';
 import '../../presentation/screens/otp/product_screen.dart'; 
 import '../../presentation/screens/settings/settings_screen.dart'; 
+import '../../presentation/screens/cart/cart_screen.dart'; // 👈 استيراد شاشة السلة
 
 class AppRouter {
   static final GoRouter router = GoRouter(
@@ -44,7 +45,14 @@ class AppRouter {
           return ProductScreen(token: token);
         },
       ),
-      
+      // 🟢 إضافة مسار السلة هنا
+      GoRoute(
+        path: '/cart',
+        builder: (context, state) {
+          final token = state.extra as String?;
+          return CartScreen(token: token);
+        },
+      ),
       GoRoute(
         path: '/settings',
         builder: (context, state) => const SettingsScreen(),

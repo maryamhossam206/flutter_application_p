@@ -10,7 +10,7 @@ class ProductDetailsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // استخراج بيانات المنتج بحماية ضد القيم الخالية (null safe)
+    
     final String name = product['name'] ?? product['title'] ?? 'منتج بدون اسم';
     final dynamic price = product['price'] ?? 0;
     final String? imageUrl = product['imageUrl'] ?? product['image'] ?? product['coverUrl'];
@@ -46,7 +46,7 @@ class ProductDetailsScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 20),
 
-                  // تفاصيل الاسم والسعر والوصف
+                  
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 16.0),
                     child: Column(
@@ -100,7 +100,7 @@ class ProductDetailsScreen extends StatelessWidget {
             ),
           ),
 
-          // زر الإضافة للسلة في الأسفل
+          
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
